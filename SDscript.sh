@@ -1,0 +1,164 @@
+#!/bin/bash
+# Usage: ./DSscript.sh [--dry-run]
+
+# Define file paths
+LNCLI_PATH="/home/soj/go/bin/lncli"
+CHARGE_LND_PATH="/home/soj/.local/bin/charge-lnd"
+LOG_FILE="/home/soj/core/cfgs/drain_max_htlc/htlc-updates.log"
+PUBKEY_LIST_FILE="/home/soj/core/cfgs/drain_max_htlc/pubkey_list.txt"
+
+# Function to calculate max_htlc_msat with 15% reduction and rounding down to nearest 250000
+calculate_max_htlc_msat() {
+    local balance=$1
+    local reduction_percentage=15
+    local max_htlc_msat=$((balance - balance * reduction_percentage / 100))
+    local rounded_max_htlc_msat=$(( (max_htlc_msat / 250000) * 250000 ))
+    echo ${rounded_max_htlc_msat}000
+}
+
+# Function to perform capacity check and set disable threshold percentage
+capacity_check() {
+    local capacity=$1
+    if [[ $capacity -ge 1 && $capacity -le 1899999 ]]; then
+        minpercentage=10
+    elif [[ $capacity -ge 1900000 && $capacity -le 7900000 ]]; then
+        minpercentage=8
+    elif [[ $capacity -ge 7900001 && $capacity -le 9900000 ]]; then
+        minpercentage=6
+    elif [[ $capacity -ge 9900001 && $capacity -le 15900000 ]]; then
+        minpercentage=5
+    elif [[ $capacity -ge 15900001 && $capacity -le 49900000 ]]; then
+        minpercentage=4
+    elif [[ $capacity -ge 49900001 && $capacity -le 99900000 ]]; then
+        minpercentage=3
+    else
+        minpercentage=1
+    fi
+    echo "Minimum acceptable percentage for capacity $capacity is $minpercentage%" >> $LOG_FILE
+    echo >> $LOG_FILE
+}
+
+# Function to check max_htlc_msat
+max_htlc_check() {
+    local minpercentage=$1
+    local percentage=$2
+    local current_max_htlc_msat=$3
+    if [[ $percentage -le $minpercentage ]]; then
+        if [[ $current_max_htlc_msat -eq 1000 ]]; then
+            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m max_htlc_msat already set to \e[1m1000\e[0m. Moving on to next channel."
+            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
+            return
+        else
+            max_htlc_msat=1000
+            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Creating Charge-lnd cfg for \e[1m$peer_alias\e[0m. setting max_htlc_msat to \e[1m1000\e[0m"
+            create_temp_config
+        fi
+    else
+        max_htlc_msat=$(calculate_max_htlc_msat $local_balance)
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Creating Charge-lnd cfg for \e[1m$peer_alias\e[0m. setting max_htlc_msat to \e[1m$max_htlc_msat\e[0m"
+        create_temp_config
+    fi
+}
+
+# Function to create temporary config file
+create_temp_config() {
+    echo "Creating Charge-lnd config for $peer_alias : $chan_id. setting max_htlc_msat to $max_htlc_msat">> $LOG_FILE
+    echo >> $LOG_FILE
+    temp_config="/home/soj/core/cfgs/drain_max_htlc/cfg/charge-lnd-config-$chan_id.cfg"
+    if [ -f "$temp_config" ]; then
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Removing old/existing config file: $temp_config"
+        rm "$temp_config"
+    fi
+    echo "[set-max-htlc]" >> $temp_config
+    echo "chan.id = $chan_id" >> $temp_config
+    echo "strategy = static" >> $temp_config
+    echo "max_htlc_msat = $max_htlc_msat" >> $temp_config
+    echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Peer Alias: \e[1m$peer_alias\e[0m, Capacity: \e[1m$capacity\e[0m, Local Balance: \e[1m$local_balance\e[0m, Old max_htlc_msat: \e[1m$current_max_htlc_msat\e[0m, New max_htlc_msat: \e[1m$max_htlc_msat\e[0m"
+    # Add --dry-run option if DRY_RUN_FLAG is true
+    if [ "$DRY_RUN_FLAG" = true ]; then
+        $CHARGE_LND_PATH --dry-run -v -c $temp_config >> $LOG_FILE 2>&1
+    else
+        $CHARGE_LND_PATH -v -c $temp_config >> $LOG_FILE 2>&1
+    fi
+    echo >> $LOG_FILE
+    echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Clean up temporary config files..."
+    rm $temp_config
+    echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
+}
+
+# Function to preprocess channel data, checking for multiple chan_id's
+preprocess_channel() {
+    local pubkey=$1
+    local channel_info_list=$($LNCLI_PATH listchannels | jq --arg pubkey "$pubkey" '.channels[] | select(.remote_pubkey == $pubkey)')
+    while read -r chan_id; do
+        process_channel "$chan_id"
+    done <<< "$(echo "$channel_info_list" | jq -r '.chan_id')"
+}
+
+# Function to process channel
+process_channel() {
+    local chan_id=$1
+    local channel_info=$(echo "$($LNCLI_PATH listchannels)" | jq '.channels[] | select(.chan_id == '\"$chan_id\"')')
+        echo "[DS] Processing $pubkey" >> $LOG_FILE
+        echo >> $LOG_FILE
+        echo "Channel Info: $channel_info" >> $LOG_FILE
+        echo >> $LOG_FILE
+        # Extract relevant data
+        peer_alias=$(echo "$channel_info" | jq -r '.peer_alias')
+        capacity=$(echo "$channel_info" | jq -r '.capacity')
+        local_balance=$(echo "$channel_info" | jq -r '.local_balance')
+        # Use chan_id to find current max_htlc_msat
+        current_max_htlc_msat="$($LNCLI_PATH getchaninfo $chan_id | jq -r '.node1_policy.max_htlc_msat')"
+        echo "Channel max_htlc_msat Info: $current_max_htlc_msat" >> $LOG_FILE
+        echo >> $LOG_FILE
+        percentage=$(printf "%.0f" "$(bc <<< "scale=2; ($local_balance / $capacity) * 100")")
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m \e[1m$peer_alias\e[0m \ \e[1m$pubkey\e[0m \ \e[1m$chan_id\e[0m"
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Capacity: \e[1m$capacity\e[0m \ Local Balance: \e[1m$local_balance ($percentage%)\e[0m \ Current max_htlc_msat: \e[1m$current_max_htlc_msat\e[0m"
+        capacity_check $capacity
+        max_htlc_check $minpercentage $percentage $current_max_htlc_msat
+}
+
+# Function to clean up logs after 100MB
+check_and_delete_log_file() {
+    local log_file=$1
+    local max_size_mb=100
+    local max_size_bytes=$((max_size_mb * 1024 * 1024))
+    if [[ -f $log_file ]]; then
+        local file_size=$(stat -c%s $log_file)
+        if [[ $file_size -gt $max_size_bytes ]]; then
+            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Log file size exceeds $max_size_mb MB. Deleting..."
+            rm $log_file
+            touch $log_file
+            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Log file deleted and recreated."
+        fi
+    else
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Log file not found."
+    fi
+}
+
+# Parse command line options
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            DRY_RUN_FLAG=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Iterate through each pubkey in the list
+while IFS= read -r pubkey; do
+    # Skip lines starting with #
+    if [[ $pubkey == \#* ]]; then
+        continue
+    fi
+        check_and_delete_log_file "$LOG_FILE"
+    pubkey=$pubkey
+    preprocess_channel $pubkey
+done < "$PUBKEY_LIST_FILE"
+
+echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Jobs done."
