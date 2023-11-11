@@ -2,15 +2,17 @@
 # Usage: ./DSscript.sh [--dry-run]
 
 # Define file paths
-LNCLI_PATH="/home/soj/go/bin/lncli"
-CHARGE_LND_PATH="/home/soj/.local/bin/charge-lnd"
-LOG_FILE="/home/soj/core/cfgs/drain_max_htlc/htlc-updates.log"
-PUBKEY_LIST_FILE="/home/soj/core/cfgs/drain_max_htlc/pubkey_list.txt"
+LNCLI_PATH="/PATH/TO/lncli"
+CHARGE_LND_PATH="/PATH/TO/charge-lnd"
+LOG_FILE="/PATH/TO/htlc-updates.log"
+PUBKEY_LIST_FILE="/PATH/TO/pubkey_list.txt"
+#Define variable
+R_PERCENT=5
 
-# Function to calculate max_htlc_msat with 15% reduction and rounding down to nearest 250000
+# Function to calculate max_htlc_msat reduction and rounding down to nearest 250000
 calculate_max_htlc_msat() {
     local balance=$1
-    local reduction_percentage=15
+    local reduction_percentage=$R_PERCENT
     local max_htlc_msat=$((balance - balance * reduction_percentage / 100))
     local rounded_max_htlc_msat=$(( (max_htlc_msat / 250000) * 250000 ))
     echo ${rounded_max_htlc_msat}000
@@ -53,6 +55,12 @@ max_htlc_check() {
             echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Creating Charge-lnd cfg for \e[1m$peer_alias\e[0m. setting max_htlc_msat to \e[1m1000\e[0m"
             create_temp_config
         fi
+
+    elif [[ $(calculate_max_htlc_msat $local_balance) -eq $current_max_htlc_msat ]]; then
+        max_htlc_msat=$(calculate_max_htlc_msat $local_balance)
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m max_htlc_msat is already set to \e[1m$max_htlc_msat\e[0m. Moving on to next channel."
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
+        return
     else
         max_htlc_msat=$(calculate_max_htlc_msat $local_balance)
         echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Creating Charge-lnd cfg for \e[1m$peer_alias\e[0m. setting max_htlc_msat to \e[1m$max_htlc_msat\e[0m"
@@ -99,23 +107,34 @@ preprocess_channel() {
 process_channel() {
     local chan_id=$1
     local channel_info=$(echo "$($LNCLI_PATH listchannels)" | jq '.channels[] | select(.chan_id == '\"$chan_id\"')')
-        echo "[DS] Processing $pubkey" >> $LOG_FILE
-        echo >> $LOG_FILE
-        echo "Channel Info: $channel_info" >> $LOG_FILE
-        echo >> $LOG_FILE
-        # Extract relevant data
-        peer_alias=$(echo "$channel_info" | jq -r '.peer_alias')
-        capacity=$(echo "$channel_info" | jq -r '.capacity')
-        local_balance=$(echo "$channel_info" | jq -r '.local_balance')
-        # Use chan_id to find current max_htlc_msat
-        current_max_htlc_msat="$($LNCLI_PATH getchaninfo $chan_id | jq -r '.node1_policy.max_htlc_msat')"
-        echo "Channel max_htlc_msat Info: $current_max_htlc_msat" >> $LOG_FILE
-        echo >> $LOG_FILE
-        percentage=$(printf "%.0f" "$(bc <<< "scale=2; ($local_balance / $capacity) * 100")")
-        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m \e[1m$peer_alias\e[0m \ \e[1m$pubkey\e[0m \ \e[1m$chan_id\e[0m"
-        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Capacity: \e[1m$capacity\e[0m \ Local Balance: \e[1m$local_balance ($percentage%)\e[0m \ Current max_htlc_msat: \e[1m$current_max_htlc_msat\e[0m"
-        capacity_check $capacity
-        max_htlc_check $minpercentage $percentage $current_max_htlc_msat
+    echo "[DS] Processing $pubkey" >> $LOG_FILE
+    echo >> $LOG_FILE
+    echo "Channel Info: $channel_info" >> $LOG_FILE
+    echo >> $LOG_FILE
+    # Extract relevant data
+    peer_alias=$(echo "$channel_info" | jq -r '.peer_alias')
+    capacity=$(echo "$channel_info" | jq -r '.capacity')
+    local_balance=$(echo "$channel_info" | jq -r '.local_balance')
+    # Use chan_id to find current max_htlc_msat
+    local getchaninfo="$($LNCLI_PATH getchaninfo $chan_id)"
+    local node1_pub=$(echo $getchaninfo | jq -r '.node1_pub')
+    local node2_pub=$(echo $getchaninfo | jq -r '.node2_pub')
+    if [ "$pubkey" == "$node1_pub" ]; then
+        current_max_htlc_msat=$(echo $getchaninfo | jq -r '.node2_policy.max_htlc_msat')
+    elif [ "$pubkey" == "$node2_pub" ]; then
+        current_max_htlc_msat=$(echo $getchaninfo | jq -r '.node1_policy.max_htlc_msat')
+    else
+        # Handle the case where the pubkey doesn't match either node1_pub or node2_pub
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Error: Pubkey not found in chan_id information"
+        exit 1
+    fi
+    echo "Channel max_htlc_msat Info: $current_max_htlc_msat" >> $LOG_FILE
+    echo >> $LOG_FILE
+    percentage=$(printf "%.0f" "$(bc <<< "scale=2; ($local_balance / $capacity) * 100")")
+    echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m \e[1m$peer_alias\e[0m \ \e[1m$pubkey\e[0m \ \e[1m$chan_id\e[0m"
+    echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Capacity: \e[1m$capacity\e[0m \ Local Balance: \e[1m$local_balance ($percentage%)\e[0m \ Current max_htlc_msat: \e[1m$current_max_htlc_msat\e[0m"
+    capacity_check $capacity
+    max_htlc_check $minpercentage $percentage $current_max_htlc_msat
 }
 
 # Function to clean up logs after 100MB
