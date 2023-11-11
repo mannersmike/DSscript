@@ -6,7 +6,7 @@ LNCLI_PATH="/PATH/TO/lncli"
 CHARGE_LND_PATH="/PATH/TO/charge-lnd"
 LOG_FILE="/PATH/TO/htlc-updates.log"
 PUBKEY_LIST_FILE="/PATH/TO/pubkey_list.txt"
-#Define variable
+# Define variable
 R_PERCENT=5
 
 # Function to calculate max_htlc_msat reduction and rounding down to nearest 250000
