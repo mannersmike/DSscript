@@ -72,7 +72,7 @@ max_htlc_check() {
 create_temp_config() {
     echo "Creating Charge-lnd config for $peer_alias : $chan_id. setting max_htlc_msat to $max_htlc_msat">> $LOG_FILE
     echo >> $LOG_FILE
-    temp_config="/home/soj/core/cfgs/drain_max_htlc/cfg/charge-lnd-config-$chan_id.cfg"
+    temp_config="./cfg/charge-lnd-config-$chan_id.cfg"
     if [ -f "$temp_config" ]; then
         echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Removing old/existing config file: $temp_config"
         rm "$temp_config"
