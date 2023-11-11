@@ -1,7 +1,12 @@
 # DSscript.sh
 
 ## Description:
-This Bash script is designed for managing Lightning Network channels using the Charge-lnd tool. It provides a set of functions to calculate and update the maximum HTLC (Hold-Time Locked Contract) value based on channel balances, capacity checks, and configurable reduction percentages. The script iterates through a list of Lightning Network node public keys, processes associated channels, and logs relevant information.
+This Bash script is designed for managing Lightning Network channels using the Charge-lnd tool. 
+It provides a set of functions to dynamically control the outflow of satoshis in a channel. 
+When liquidity of a channel reaches a specified threshold, the script disables the outflow by setting the maximum allowed HTLC (Hold-Time Locked Contract) to 1. 
+The script also includes set of functions to calculate and update the maximum HTLC of a channel value based on local balances, total capacity, and configurable reduction percentages
+This strategic adjustment helps optimize the channel's liquidity in an effort to reduced failed route attempts due to insufficient funds. 
+The script iterates through a list of Lightning Network node public keys, processes associated channels, and logs relevant information.
 
 ## Features:
 
