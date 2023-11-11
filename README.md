@@ -1,6 +1,6 @@
 # DSscript.sh
 
-Description:
+## Description:
 This Bash script is designed for managing Lightning Network channels using the Charge-lnd tool. It provides a set of functions to calculate and update the maximum HTLC (Hold-Time Locked Contract) value based on channel balances, capacity checks, and configurable reduction percentages. The script iterates through a list of Lightning Network node public keys, processes associated channels, and logs relevant information.
 
 ## Features:
@@ -26,11 +26,17 @@ bc: Arbitrary precision calculator language.
 ## Configuration:
 1. Update paths for LNCLI_PATH, CHARGE_LND_PATH, LOG_FILE, PUBKEY_LIST_FILE in the script.
 2. Adjust the R_PERCENT variable for the desired reduction percentage.
+3. Schedule a cron job to run DSscript
+```
+#run DSscript every 30 minutes
+*/30 * * * *  /PATH/TO/DSscript.sh
+``` 
 
 ## Note:
 1. Ensure dependencies are installed (jq, bc).
 2. Ensure Charge-lnd is installed (https://github.com/accumulator/charge-lnd)
 3. Replace placeholder paths in the script with actual paths on your system.
+4. make sure the script has the execute permission (chmod +x DSscript.sh)
 
 ## License:
 This script is licensed under the MIT License.
