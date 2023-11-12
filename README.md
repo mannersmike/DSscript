@@ -49,12 +49,3 @@ This script is licensed under the MIT License.
 ## Disclaimer:
 Use this script at your own risk. Be sure to review and understand the code before executing it.
 
-### Tip
-#### Lightning
-```
-lnbc1pj57facpp5lj52aneqv0hr8udwqv30gqd9tr4m4j35t6309lzf5r2kaxk8jj0qdqqcqzzsxqyz5vqsp56yj5fadhg6wseh6pc84el8fyy4u6gj5vwwrzzccx4jhmeweh99ns9qyyssqtsytgz32zdcdr4tv0y7ll56jxsk5wr9wuuyef7rqttvvlqk5ux4kyrgm2qyfcjh73a2n40cr4vp68err3lwv39r5cfgkkr9k5cmxrwsqtzn26y
-```
-#### BTC 
-```
-3HLmxh5WfDQoy6ZwKhhH1mgkj2E7Wchnq4
-```
