@@ -31,11 +31,6 @@ bc: Arbitrary precision calculator language.
 ## Configuration:
 1. Update paths for LNCLI_PATH, CHARGE_LND_PATH, LOG_FILE, PUBKEY_LIST_FILE in the script.
 2. Adjust the R_PERCENT variable for the desired reduction percentage.
-3. Schedule a cron job to run DSscript
-```
-#run DSscript every 30 minutes
-*/30 * * * *  /PATH/TO/DSscript.sh
-``` 
 
 ## Note:
 1. Ensure dependencies are installed (jq, bc).
