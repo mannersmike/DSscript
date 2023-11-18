@@ -70,34 +70,34 @@ max_htlc_check() {
     local current_max_htlc_msat=$3
     if [[ $percentage -le $minpercentage ]]; then
         if [[ $current_max_htlc_msat -eq 1000 ]]; then
-                    if [ $DEBUGMODE -eq 1 ]; then
+            if [ $DEBUGMODE -eq 1 ]; then
                 echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m max_htlc_msat already set to \e[1m1000\e[0m. Moving on to next channel."
                 echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
                 echo -e "[ DS ] max_htlc_msat already set to 1000. Moving on to next channel." >> $LOG_FILE
-                fi
+            fi
             return
         else
             max_htlc_msat=1000
-                        if [ $DEBUGMODE -eq 1 ]; then
+            if [ $DEBUGMODE -eq 1 ]; then
                 echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Creating Charge-lnd cfg for \e[1m$peer_alias\e[0m. setting max_htlc_msat to \e[1m1000\e[0m"
                 echo -e "[ DS ] Creating Charge-lnd cfg for $peer_alias. setting max_htlc_msat to 1000" >> $LOG_FILE
-                        fi
+            fi
             create_temp_config
         fi
     elif [[ $(calculate_max_htlc_msat $local_balance) -eq $current_max_htlc_msat ]]; then
         max_htlc_msat=$(calculate_max_htlc_msat $local_balance)
-                if [ $DEBUGMODE -eq 1 ]; then
-             echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m max_htlc_msat already set to \e[1m$max_htlc_msat\e[0m. Moving on to next channel."
-             echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
-             echo -e "[ DS ] max_htlc_msat already set to $max_htlc_msat. Moving on to next channel." >> $LOG_FILE
-                fi
+            if [ $DEBUGMODE -eq 1 ]; then
+                 echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m max_htlc_msat already set to \e[1m$max_htlc_msat\e[0m. Moving on to next channel."
+                 echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
+                 echo -e "[ DS ] max_htlc_msat already set to $max_htlc_msat. Moving on to next channel." >> $LOG_FILE
+             fi
         return
     else
         max_htlc_msat=$(calculate_max_htlc_msat $local_balance)
-                if [ $DEBUGMODE -eq 1 ]; then
-            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Creating Charge-lnd cfg for \e[1m$peer_alias\e[0m. setting max_htlc_msat to \e[1m$max_htlc_msat\e[0m"
-            echo -e "[ DS ] Creating Charge-lnd cfg for $peer_alias. setting max_htlc_msat to $max_htlc_msat" >> $LOG_FILE
-                fi
+            if [ $DEBUGMODE -eq 1 ]; then
+                echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Creating Charge-lnd cfg for \e[1m$peer_alias\e[0m. setting max_htlc_msat to \e[1m$max_htlc_msat\e[0m"
+                echo -e "[ DS ] Creating Charge-lnd cfg for $peer_alias. setting max_htlc_msat to $max_htlc_msat" >> $LOG_FILE
+            fi
         create_temp_config
     fi
 }
@@ -111,9 +111,9 @@ create_temp_config() {
     temp_config="/tmp/charge-lnd-config-$chan_id.cfg"
     if [ -f "$temp_config" ]; then
             if [ $DEBUGMODE -eq 1 ]; then
-            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Removing old/existing config file: $temp_config"
-                        echo -e "[ DS ] Removing old/existing config file: $temp_config" >> $LOG_FILE
-                fi
+                echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Removing old/existing config file: $temp_config"
+                echo -e "[ DS ] Removing old/existing config file: $temp_config" >> $LOG_FILE
+            fi
         rm "$temp_config"
     fi
     echo "[set-max-htlc]" >> $temp_config
@@ -127,8 +127,8 @@ create_temp_config() {
     # Add --dry-run option if DRY_RUN_FLAG is true
     if [ "$DRY_RUN_FLAG" = true ]; then
         if [ $DEBUGMODE -eq 1 ]; then
-                echo -e "[ DS ] Charge-lnd" >> $LOG_FILE
-                    echo -e " " >> $LOG_FILE
+            echo -e "[ DS ] Charge-lnd" >> $LOG_FILE
+            echo -e " " >> $LOG_FILE
             $CHARGE_LND_PATH --dry-run -v -c $temp_config >> $LOG_FILE 2>&1
             echo -e " " >> $LOG_FILE
         else
@@ -136,8 +136,8 @@ create_temp_config() {
         fi
     else
         if [ $DEBUGMODE -eq 1 ]; then
-                        echo -e "[ DS ] Charge-lnd" >> $LOG_FILE
-                    echo -e " " >> $LOG_FILE
+            echo -e "[ DS ] Charge-lnd" >> $LOG_FILE
+            echo -e " " >> $LOG_FILE
             $CHARGE_LND_PATH -v -c $temp_config >> $LOG_FILE 2>&1
             echo -e " " >> $LOG_FILE
         else
@@ -145,11 +145,11 @@ create_temp_config() {
         fi
     fi
         if [ $DEBUGMODE -eq 1 ]; then
-        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Clean up temporary config files..."
-        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
-        echo -e "[ DS ] Clean up temporary config files..." >> $LOG_FILE
+            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Clean up temporary config files..."
+            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m "
+            echo -e "[ DS ] Clean up temporary config files..." >> $LOG_FILE
         fi
-        rm $temp_config
+    rm $temp_config
     local rounded_max_htlc=$(( (max_htlc_msat / 250000) * 250000 / 1000))
     log_to_file "$peer_alias" "$capacity" "$local_balance" "$current_max_htlc_msat" "$rounded_max_htlc"
 }
@@ -190,9 +190,9 @@ process_channel() {
     elif [ "$pubkey" == "$node2_pub" ]; then
         current_max_htlc_msat=$(echo $getchaninfo | jq -r '.node1_policy.max_htlc_msat')
     else
-        # Handle the case where the pubkey doesn't match either node1_pub or node2_pub
+    # Handle the case where the pubkey doesn't match either node1_pub or node2_pub
     if [ $DEBUGMODE -eq 1 ]; then
-            echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Error: Pubkey not found in chan_id information"
+        echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Error: Pubkey not found in chan_id information"
         echo "[ DS ] Error: Pubkey not found in chan_id information" >> $LOG_FILE
         echo "[ DS ] " >> $LOG_FILE
     fi
@@ -254,7 +254,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo -e "\e[90m[\e[0m\e[94m \e[1mDS \e[0m\e[90m]\e[0m Unknown option: $1"
-                        echo -e "[ DS ] Unknown option: $1" >> $LOG_FILE
+            echo -e "[ DS ] Unknown option: $1" >> $LOG_FILE
             exit 1
             ;;
     esac
